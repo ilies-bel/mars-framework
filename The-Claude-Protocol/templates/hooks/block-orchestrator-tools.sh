@@ -44,6 +44,14 @@ if [[ "$TOOL_NAME" == "Edit" ]] || [[ "$TOOL_NAME" == "Write" ]]; then
   if [[ "$(basename "$FILE_PATH")" == "git-issues.md" ]]; then
     exit 0
   fi
+
+  # Allow edits on non-versioned files (gitignored or brand-new untracked files).
+  # These can't affect git history, so they skip the branch/approval gates below.
+  FILE_DIR=$(dirname "$FILE_PATH")
+  [[ ! -d "$FILE_DIR" ]] && FILE_DIR=$(pwd)
+  if ! git -C "$FILE_DIR" ls-files --error-unmatch -- "$FILE_PATH" >/dev/null 2>&1; then
+    exit 0
+  fi
 fi
 
 # QUICK-FIX ESCAPE HATCH with branch enforcement

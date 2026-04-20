@@ -3,6 +3,11 @@
     "PreToolUse": [
       {
         "hooks": [
+          {"type": "command", "command": ".claude/hooks/block-wasteful-bash.sh"}
+        ]
+      },
+      {
+        "hooks": [
           {"type": "command", "command": ".claude/hooks/block-orchestrator-tools.sh"}
         ]
       },
@@ -30,6 +35,7 @@
       {
         "matcher": "Bash",
         "hooks": [
+          {"type": "command", "command": ".claude/hooks/enforce-ff-only-merge.sh"},
           {"type": "command", "command": ".claude/hooks/validate-epic-close.sh"},
           {"type": "command", "command": ".claude/hooks/enforce-commit-skill.sh"}
         ]
@@ -46,7 +52,8 @@
       {
         "matcher": "Bash",
         "hooks": [
-          {"type": "command", "command": ".claude/hooks/memory-capture.sh", "timeout": 10}
+          {"type": "command", "command": ".claude/hooks/memory-capture.sh", "timeout": 10},
+          {"type": "command", "command": ".claude/hooks/suggest-bead-links.sh", "timeout": 10}
         ]
       }
     ],

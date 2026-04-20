@@ -77,7 +77,7 @@ You analyze projects to detect their tech stack and **CREATE** supervisors by:
 | `web3/ethers` imports | Blockchain/Web3 | blockchain-supervisor |
 | ML frameworks (torch, tensorflow) | AI/ML | ml-supervisor |
 | `runpod` imports | RunPod serverless | runpod-supervisor |
-| Sibling `../fleet/qa-fleet/` OR `fleet.conf`/`fleet.toml` OR `.fleet/Dockerfile.feature-base.*` | QA container fleet | qa-supervisor |
+| `.fleet/fleet.toml` OR `fleet.conf`/`fleet.toml` at project root OR `.fleet/Dockerfile.feature-base.*` | QA container fleet | qa-supervisor |
 
 ---
 
@@ -341,7 +341,7 @@ Without this skill, React supervisors may write code that:
 
 **If** any of the following are true for the project directory:
 
-- Sibling directory `../fleet/qa-fleet/` exists
+- `.fleet/fleet.toml` exists in the project
 - `fleet.conf` or `fleet.toml` exists at project root
 - `.fleet/Dockerfile.feature-base.*` exists
 
@@ -381,12 +381,13 @@ Docker, supervisord, qa-fleet gateway (transparent proxy :3000, admin/dashboard 
 
 ## Project Structure
 
-QA infrastructure lives at the sibling path `../fleet/qa-fleet/` (relative to this project root). That directory contains:
+QA infrastructure is installed globally — no sibling/parent directory is required. The runtime surface consists of:
 
-- `cli/` — fleet CLI commands (`fleet init`, `fleet add`, `fleet rm`)
-- `gateway/` — the Node/Express gateway service
-- `dashboard/` — admin React dashboard (port 4000)
-- `.claude/agents/` — fleet's own infra/react/node-backend supervisors (already merged into this project's `.claude/agents/`)
+- `fleet` CLI on `PATH` — provides `fleet init`, `fleet add`, `fleet rm` (installed from `$HOME/.cache/ai-framework/fleet` during `/install-stack` Phase 1)
+- `.fleet/fleet.toml` in this project — local config (project name, root, ports, `[[services]]` entries)
+- `.claude/skills/fleet-manager/` — the fleet-manager skill (merged by `fleet install-claude` during Phase 3)
+- `.claude/agents/infra-supervisor.md`, `react-supervisor.md`, `node-backend-supervisor.md` — fleet's gateway-aware supervisors (already merged into this project's `.claude/agents/` during Phase 3)
+- Reference-only source tree (not required at runtime): `$HOME/.cache/ai-framework/fleet`
 
 ---
 

@@ -25,8 +25,12 @@ tools:
 
 ```
 1. If BEAD_ID provided: `bd update {BEAD_ID} --status in_progress`
-2. Verify: `git status` shows merge in progress
-3. Both branches readable: can access HEAD and MERGE_HEAD
+2. Parse dispatch prompt for:
+   - Mode: `merge` (default) or `rebase`
+   - Worktree: `.worktrees/bd-{ID}` (if provided — run all git commands with `git -C <worktree>`)
+3. Verify state:
+   - Mode=merge:  `git status` shows merge in progress; HEAD and MERGE_HEAD readable
+   - Mode=rebase: `git status` shows rebase in progress; HEAD and REBASE_HEAD readable
 ```
 
 ---
@@ -99,8 +103,13 @@ git show :3:[file]  # theirs (incoming)
 git add [file]
 
 # 4. After ALL resolved
+#    Mode=merge:
 git commit -m "Merge [branch]: [summary of resolutions]"
+#    Mode=rebase:
+git rebase --continue   # repeat resolve/add/continue until rebase completes
 ```
+
+**Rebase mode note:** when dispatched from the orchestrator's Post-Task Merge Protocol, the rebase is running inside the worktree at `.worktrees/bd-{ID}`. Prefix every git command with `git -C .worktrees/bd-{ID}` OR `cd` into the worktree once at the start — either is acceptable for supervisors. Do NOT leave the rebase in progress; finish it (`git rebase --continue` through all commits) before returning.
 
 ---
 

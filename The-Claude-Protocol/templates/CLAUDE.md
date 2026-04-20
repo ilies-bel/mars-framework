@@ -24,7 +24,7 @@ Beads provide **traceability** (what changed, why, by whom) and worktrees provid
 - Parallel orchestrators can work without conflicts
 - Failed experiments are contained and easily discarded
 - Every change has an audit trail back to a bead
-- User merges via UI after CI passes — no surprise commits
+- Orchestrator rebases the worktree branch onto main, asks the user for approval where needed, then fast-forward merges locally (see Post-Task Merge Protocol)
 
 ## Quick Fix Escape Hatch
 
@@ -76,7 +76,8 @@ Every task goes through beads. No exceptions (unless user approves a quick fix).
 3. **User confirms** approach
 4. **Create bead** — `bd create "Task" -d "Details"`
 5. **Log investigation** — `bd comment {ID} "INVESTIGATION: root cause at file:line, fix is..."`
-6. **Dispatch** — `Task(subagent_type="{tech}-supervisor", prompt="BEAD_ID: {id}\n\n{brief summary}")`
+6. **Route the bead** — invoke the `dispatch-route` skill. It tags the bead `lane:auto-merge` or `lane:fleet-gated`, asks you on ambiguity, and blocks dispatch if the bead is too vague to classify.
+7. **Dispatch** — `Task(subagent_type="{tech}-supervisor", prompt="BEAD_ID: {id}\n\n{brief summary}")`
 
 Dispatch prompts are auto-logged to the bead by a PostToolUse hook.
 
@@ -86,11 +87,85 @@ Use when: new feature, multiple approaches, multi-file changes, or unclear requi
 
 1. EnterPlanMode → explore with Glob/Grep/Read → design in plan file
 2. AskUserQuestion for clarification → ExitPlanMode for approval
-3. Create bead(s) from approved plan → dispatch supervisors
+3. Create bead(s) from approved plan → run `dispatch-route` per bead → dispatch supervisors
 
 **Plan → Bead mapping:**
 - Single-domain plan → standalone bead
 - Cross-domain plan → epic + children with dependencies
+
+## Post-Task Merge Protocol
+
+When a supervisor returns `BEAD {ID} COMPLETE`, the bead is at `inreview`, commits are on the `bd-{ID}` branch, and the worktree is at `.worktrees/bd-{ID}`. The **orchestrator** — not the user, not the supervisor — now drives the merge.
+
+The path forks on the bead's lane label set at dispatch time by the `dispatch-route` skill:
+
+```bash
+LANE=$(bd label list {ID} | grep -oE 'lane:(auto-merge|fleet-gated)' | head -1)
+```
+
+If no `lane:*` label is present, that's a workflow bug — re-run `dispatch-route` retroactively before merging.
+
+### Common steps (both lanes)
+
+1. **Rebase the worktree branch onto main** — orchestrator stays in main checkout, **never `cd`**:
+   ```bash
+   git -C .worktrees/bd-{ID} fetch origin main 2>/dev/null || true   # no-op if no remote
+   git -C .worktrees/bd-{ID} rebase main                              # or origin/main if remote exists
+   ```
+
+2. **On rebase conflict → auto-dispatch merge-supervisor:**
+   ```
+   Task(subagent_type="merge-supervisor",
+        prompt="BEAD_ID: {ID}\nMode: rebase\nWorktree: .worktrees/bd-{ID}\nRebasing onto main — resolve conflicts.")
+   ```
+   The merge-supervisor resolves, continues the rebase, and returns.
+
+3. **Pre-commit hook runs tests** during the rebase (and on any conflict commits). If it fails, stop and report — do not proceed in either lane.
+
+### `lane:auto-merge` (non-user-facing)
+
+4. **Auto fast-forward merge — no user prompt:**
+   ```bash
+   git checkout main
+   git merge --ff-only bd-{ID}                   # --ff-only is non-negotiable
+   bd update {ID} --status closed
+   bd close {ID}
+   ```
+   Tests are the gate, not the user. Report a one-line summary after merge (bead ID, files changed).
+
+### `lane:fleet-gated` (user-facing feature)
+
+4. **Auto-spin a fleet container — no prompt:**
+   ```bash
+   fleet add "bd-{ID}" "bd-{ID}"
+   ```
+   Wait for `RUNNING` and the service health endpoint per the `fleet:add` skill, then surface the URL to the user with: *"bd-{ID} ready for review at <url>. Reply 'merge' or 'reject'."*
+
+5. **On user `merge`:**
+   ```bash
+   git checkout main
+   git merge --ff-only bd-{ID}
+   bd update {ID} --status closed
+   bd close {ID}
+   fleet rm "bd-{ID}"
+   ```
+
+6. **On user `reject`:** leave the worktree, leave the container running for diagnosis, ask how to proceed (rework / discard / re-dispatch).
+
+The `.claude/hooks/enforce-ff-only-merge.sh` PreToolUse hook blocks any `git merge` targeting main/master without `--ff-only` as a safety net.
+
+### Final step (both lanes)
+
+7. **Leave the worktree.** `session-start.sh` detects merged worktrees and surfaces cleanup commands on the next session.
+
+### Banned during merge
+- Merging without a rebase first (would create a merge commit)
+- `git merge` without `--ff-only` (hook will block anyway)
+- Auto-merging a `lane:fleet-gated` bead without the user's `merge` reply
+- Prompting the user to approve a `lane:auto-merge` bead (tests are the gate)
+- Spinning a fleet container for `lane:auto-merge` (waste of resources)
+- Orchestrator resolving rebase conflicts itself — always dispatch merge-supervisor
+- Orchestrator `cd`-ing into `.worktrees/bd-{ID}` instead of using `git -C`
 
 ## Beads Commands
 

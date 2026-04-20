@@ -69,6 +69,17 @@ EOF
     exit 0
   fi
 
+  # ALLOW edits on non-versioned files (gitignored or brand-new untracked files).
+  # These can't affect git history, so they skip the orchestrator implementation block.
+  FILE_DIR=$(dirname "$FILE_PATH")
+  [[ ! -d "$FILE_DIR" ]] && FILE_DIR=$(pwd)
+  if ! git -C "$FILE_DIR" ls-files --error-unmatch -- "$FILE_PATH" >/dev/null 2>&1; then
+    cat << EOF
+{"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"allow","permissionDecisionReason":"Auto-approved: file not tracked by git"}}
+EOF
+    exit 0
+  fi
+
   cat << EOF
 {"hookSpecificOutput":{"hookEventName":"PreToolUse","permissionDecision":"deny","permissionDecisionReason":"Tool '$TOOL_NAME' blocked. Orchestrators investigate and delegate via Task(). Supervisors implement."}}
 EOF
