@@ -27,7 +27,7 @@ Commands:
 Examples:
   beads-orchestration setup                                  # zero-interaction install for CWD
   beads-orchestration setup --project-dir /path/to/project
-  beads-orchestration bootstrap --project-dir . --claude-only
+  beads-orchestration bootstrap --project-dir .
   beads-orchestration regen-kanban-config --project-dir . --project-name "My Proj"
 
 After 'setup', restart Claude Code and run /create-beads-orchestration to trigger discovery.
@@ -64,10 +64,13 @@ function runSetup() {
   // 1. Copy skill to ~/.claude/skills/
   require(path.join(__dirname, 'postinstall.js'));
 
-  // 2. Build bootstrap invocation with sensible non-interactive defaults
+  // 2. Build bootstrap invocation with sensible non-interactive defaults.
+  // bootstrap.py infers claude-only mode from the absence of --external-providers
+  // (see `claude_only = not args.external_providers` in bootstrap.py), so we do
+  // NOT pass --claude-only here — it is not a defined argparse flag.
   const bootstrapArgs = ['--project-dir', projectDir];
-  if (!rest.includes('--external-providers')) {
-    bootstrapArgs.push('--claude-only');
+  if (rest.includes('--external-providers')) {
+    bootstrapArgs.push('--external-providers');
   }
   if (kanbanDetected || rest.includes('--with-kanban-ui')) {
     bootstrapArgs.push('--with-kanban-ui');
