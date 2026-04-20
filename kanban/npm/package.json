@@ -1,0 +1,20 @@
+{
+  "name": "beads-kanban-ui",
+  "version": "0.1.0",
+  "description": "Visual Kanban board for the Beads CLI task tracker",
+  "bin": {
+    "bead-kanban": "./bin/cli.js"
+  },
+  "scripts": {
+    "postinstall": "node scripts/postinstall.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/AvivK5498/beads-kanban-ui"
+  },
+  "keywords": ["beads", "kanban", "task-tracker", "cli"],
+  "license": "MIT",
+  "engines": {
+    "node": ">=18"
+  }
+}
