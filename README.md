@@ -8,11 +8,8 @@ Personal AI-agent framework that pairs an enforcement layer for Claude Code with
 ai-framework/
 ├── The-Claude-Protocol/            # Orchestration + enforcement for Claude Code
 ├── kanban/                         # Next.js + Rust Kanban UI for beads
-├── .claude/commands/install-stack.md  # One-shot installer (see below)
 ├── AGENTS.md                       # Agent instructions (shared)
 └── CLAUDE.md                       # Project instructions for AI agents
-
-$HOME/.cache/ai-framework/fleet/    # Fleet repo clone (user-level cache, managed by /install-stack)
 ```
 
 ### `The-Claude-Protocol/` (`beads-orchestration`)
@@ -21,8 +18,8 @@ Enforcement-first orchestration for Claude Code: 13 hooks, per-task git worktree
 ### `kanban/` (`bead-kanban`)
 Visual Kanban UI for the beads CLI — multi-project dashboard, epic progress, PR status, memory and agents panels. See [its README](kanban/README.md).
 
-### `fleet` (user-level cache clone at `$HOME/.cache/ai-framework/fleet`)
-Runs multiple feature-branch versions of an app simultaneously on localhost. A gateway on `:3000` proxies to the active container, `:4000` hosts the admin dashboard. `/install-stack` clones the repo to `$HOME/.cache/ai-framework/fleet` and installs the `fleet` CLI globally; the CLI then contributes `infra-supervisor`, `react-supervisor`, `node-backend-supervisor`, the `fleet-manager` skill, and a `qa-supervisor` (Quinn) to the target project's `.claude/`. The per-project trigger is `.fleet/fleet.toml` (seeded by `/install-stack` Phase 3.5).
+### [`fleet`](https://github.com/ilies-bel/fleet) (published as [`@ilies-bel/fleet`](https://www.npmjs.com/package/@ilies-bel/fleet))
+Runs multiple feature-branch versions of an app simultaneously on localhost. A gateway on `:3000` proxies to the active container, `:4000` hosts the admin dashboard. Install the CLI globally with `npm install -g @ilies-bel/fleet`, then run `fleet init` in the target project. The per-project config lives in `.fleet/fleet.toml`.
 
 ## How the pieces fit
 
@@ -39,39 +36,33 @@ Runs multiple feature-branch versions of an app simultaneously on localhost. A g
 - Node.js 18+ and Python 3
 - Docker + Docker Compose v2 (for fleet)
 - Claude Code
-- Nothing else — `/install-stack` clones `fleet` and `mars-framework` into `$HOME/.cache/ai-framework/` on every run
 
-## Quick start — `/install-stack`
+## Install
 
-From inside any target project, run the Claude Code slash command provided by this repo:
-
-```
-/install-stack
-```
-
-It performs, non-interactively:
-
-1. Clones `mars-framework` + `fleet` into `$HOME/.cache/ai-framework/` and installs `rtk`, `beads-orchestration`, `bead-kanban`, and `fleet` CLIs globally from those cache clones.
-2. Bootstraps The Claude Protocol into the target directory (agents, hooks, `.beads/`, kanban support).
-3. Runs `fleet install-claude --local` so fleet's supervisors and `/fleet:*` commands overwrite the orchestrator stubs.
-4. Seeds `.fleet/fleet.toml` in the target project (and runs `fleet init` if Docker is available).
-5. Dispatches the `discovery` agent to generate tech-stack supervisors — plus a QA supervisor (Quinn) whenever the target project has a `.fleet/fleet.toml`.
-6. Verifies CLIs on `PATH` and launches the kanban UI on `http://localhost:3008`.
-
-Clone URLs are hard-coded in `.claude/commands/install-stack.md` — edit them if you fork `mars-framework` or `fleet`.
-
-## Manual install
+Install the CLIs, then bootstrap The Claude Protocol into your target project.
 
 ```bash
-# The Claude Protocol into a target repo
-cd The-Claude-Protocol && ./bootstrap.py --project-dir <target> --with-kanban-ui
+# 1. Global CLIs
+brew install rtk
+npm install -g @ilies-bel/fleet                 # fleet — multi-branch QA runtime
+cd The-Claude-Protocol && npm install -g .      # beads-orchestration
+cd ../kanban && npm install -g .                # bead-kanban (Kanban UI)
 
-# Kanban UI
-cd kanban && npm install && npm run dev
+# 2. Bootstrap The Claude Protocol into a target repo
+cd The-Claude-Protocol
+./bootstrap.py --project-dir <target> --with-kanban-ui
 
-# Fleet assets into a target repo
-cd <target> && fleet install-claude --local
+# 3. Set up fleet in the target repo
+cd <target>
+fleet init                                      # interactive; needs Docker running
+
+# 4. Launch the Kanban UI
+bead-kanban                                      # serves http://localhost:3008
 ```
+
+After bootstrap, the `discovery` agent generates tech-stack supervisors for the
+target project — including a QA supervisor (Quinn) whenever the project has a
+`.fleet/fleet.toml`.
 
 ## Working on this repo
 
