@@ -383,11 +383,8 @@ Docker, supervisord, qa-fleet gateway (transparent proxy :3000, admin/dashboard 
 
 QA infrastructure is installed globally — no sibling/parent directory is required. The runtime surface consists of:
 
-- `fleet` CLI on `PATH` — provides `fleet init`, `fleet add`, `fleet rm` (installed from `$HOME/.cache/ai-framework/fleet` during `/install-stack` Phase 1)
+- `fleet` CLI on `PATH` — provides `fleet init`, `fleet add`, `fleet rm` (installed globally via `npm install -g @ilies-bel/fleet`)
 - `.fleet/fleet.toml` in this project — local config (project name, root, ports, `[[services]]` entries)
-- `.claude/skills/fleet-manager/` — the fleet-manager skill (merged by `fleet install-claude` during Phase 3)
-- `.claude/agents/infra-supervisor.md`, `react-supervisor.md`, `node-backend-supervisor.md` — fleet's gateway-aware supervisors (already merged into this project's `.claude/agents/` during Phase 3)
-- Reference-only source tree (not required at runtime): `$HOME/.cache/ai-framework/fleet`
 
 ---
 
